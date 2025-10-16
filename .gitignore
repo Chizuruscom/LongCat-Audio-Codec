@@ -1,0 +1,12 @@
+.hope/
+demo_audio_output/
+hope_log/
+output/
+resources/
+**/*demo_audio*/
+*.npy
+*.pth
+*.pyc
+*.pt
+*.pkl
+.DS_Store
