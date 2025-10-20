@@ -204,7 +204,7 @@ We provide a variety of audio samples to demonstrate the performance of LongCat-
 2. The audio files in the rebuilt_24k_2codebooks subfolder are reconstructed using a 24kHz Decoder with 2 codebooks. This decoder is fine-tuned on a limited speaker dataset, and is used to demonstrate the decoder’s ability to achieve high-quality reconstruction at extremely low bitrates.
 
 ## 🔥 Latest News
-
+* Oct 20, 2025: We release the [arxiv page](https://arxiv.org/abs/2510.15227) of  **LongCat-Audio-Codec**
 * Oct 17, 2025: We release the [project page](https://github.com/meituan-longcat/LongCat-Audio-Codec/) of  **LongCat-Audio-Codec**
 
 
@@ -223,6 +223,7 @@ If you find our work useful in your research, please consider citing:
 @article{longcataudiocodec,
   title={LongCat-Audio-Codec: An Audio Tokenizer and Detokenizer Solution Designed for Speech Large Language Models},
   author={Xiaohan Zhao, Hongyu Xiang, Shengze Ye, Song Li, Zhengkun Tian, Guanyu Chen, Ke Ding, Guanglu Wan},
+  journal={arXiv preprint arXiv:2510.15227},
   organization={LongCat Team, Meituan},
   year={2025}
 }
