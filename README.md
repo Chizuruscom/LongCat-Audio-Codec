@@ -8,7 +8,7 @@
 <br>
 
 <div align="center" style="line-height: 1;">
-  <a href="tech_report.pdf" target="_blank" style="margin: 2px;">
+  <a href="https://arxiv.org/abs/2510.15227" target="_blank" style="margin: 2px;">
     <img alt="Technical Report" 
          src="https://img.shields.io/badge/Technical%20Report-LongCatAudioCodec-green?style=flat" 
          style="display: inline-block; vertical-align: middle;"/>
