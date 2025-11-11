@@ -64,6 +64,41 @@ class MemDecoder(nn.Module):
 
         return x
 
+    
+    def forward_stream(
+        self, 
+        x,
+        last_c0_mem1, 
+        last_h0_mem1, 
+        last_c0_mem2, 
+        last_h0_mem2, 
+        lstm_buffer_input
+    ):
+        """
+        Forward pass for streaming inference with LSTM memory states.
+        
+        Args:
+            x: Input tensor
+            last_c0_mem1: Previous cell state for first LSTM memory
+            last_h0_mem1: Previous hidden state for first LSTM memory  
+            last_c0_mem2: Previous cell state for second LSTM memory
+            last_h0_mem2: Previous hidden state for second LSTM memory
+            lstm_buffer_input: LSTM buffer input for streaming
+            
+        Returns:
+            tuple: (output, list1_h, list1_c, list2_h, list2_c, lstm_buffer)
+        """
+
+        # Process through first memory layer with streaming
+        x, list1_h, list1_c, list2_h, list2_c, lstm_buffer = self.mem_layers[0].forward_stream(
+            x, last_c0_mem1, last_h0_mem1, last_c0_mem2, last_h0_mem2, lstm_buffer_input
+        )
+        
+        # Process through the main model
+        x = self.model(x)
+        
+        return x, list1_h, list1_c, list2_h, list2_c, lstm_buffer
+
 
 if __name__ == "__main__":
     x = torch.randn([8, 1024, 1])
