@@ -16,6 +16,7 @@ class GLSTM(nn.Module):
         self.ln2 = nn.LayerNorm(hidden_size)
 
         self.groups = groups
+        self.hidden_size = hidden_size_t
 
     def forward(self, x):
         out = x
@@ -36,3 +37,55 @@ class GLSTM(nn.Module):
         out = out.transpose(1, 2).contiguous()
 
         return out
+    
+
+    def forward_stream(
+        self, 
+        x,
+        list1_h_input, 
+        list1_c_input, 
+        list2_h_input, 
+        list2_c_input, 
+        lstm_buffer_input
+    ):
+        """
+        Forward pass for streaming inference with LSTM states.
+        
+        Args:
+            x: Input tensor
+            list1_h_input: Previous hidden state for first LSTM layer
+            list1_c_input: Previous cell state for first LSTM layer
+            list2_h_input: Previous hidden state for second LSTM layer  
+            list2_c_input: Previous cell state for second LSTM layer
+            lstm_buffer_input: LSTM buffer input for context
+            
+        Returns:
+            tuple: (output, list1_h, list1_c, list2_h, list2_c, lstm_buffer)
+        """
+        lstm_buffer_length = 8
+        out = x
+        out = out.transpose(1, 2).contiguous()
+        out = out.view(out.size(0), out.size(1), -1).contiguous()
+        out = torch.chunk(out, self.groups, dim=-1)
+        
+        out,(list1_h, list1_c) = self.lstm_list1[0](out[0],(list1_h_input, list1_c_input))
+       
+        out = self.ln1(out)
+
+        out = torch.chunk(out, self.groups, dim=-1)
+       
+        out,(list2_h, list2_c) = self.lstm_list2[0](out[0],(list2_h_input, list2_c_input))
+
+        out = self.ln2(out)
+
+        out = out.view(out.size(0), out.size(1), x.size(1)).contiguous()
+
+        out = out.transpose(1, 2).contiguous()
+        
+        lstm_buffer_update = torch.cat([lstm_buffer_input[:, :, :], out], dim=-1)
+        
+        out = lstm_buffer_update[:,:,-(lstm_buffer_length - 1)-out.size(2):]
+        # only return last lstm_buffer_length frames as context
+        out_lstm = lstm_buffer_update[:, :, -lstm_buffer_length:]
+        
+        return out, list1_h, list1_c, list2_h, list2_c, out_lstm

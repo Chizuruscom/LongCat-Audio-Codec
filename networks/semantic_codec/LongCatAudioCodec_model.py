@@ -479,3 +479,63 @@ class LongCatAudioCodecDecoder(nn.Module):
         quantized_audio = self.decoder(latents)
 
         return quantized_audio
+
+
+    def forward_stream(self, semantic_codes: torch.Tensor, acoustic_codes: torch.Tensor, list1_h_input: torch.Tensor, list1_c_input: torch.Tensor, list2_h_input: torch.Tensor, list2_c_input: torch.Tensor, lstm_buffer_input: torch.Tensor) -> torch.Tensor:
+        """
+        Decodes semantic and acoustic tokens into an audio waveform in streaming mode.
+
+        This method first dequantizes the input tokens to get continuous latents,
+        concatenates them, and then feeds the result to a waveform generator in
+        streaming fashion with LSTM memory states.
+
+        Parameters
+        ----------
+        semantic_codes : torch.Tensor, shape [B, T_codes]
+            The discrete semantic tokens.
+        acoustic_codes : torch.Tensor, shape [B, N_q, T_codes]
+            The discrete acoustic tokens from the residual vector quantizer.
+        list1_h_input : torch.Tensor
+            Previous hidden state for first LSTM memory layer
+        list1_c_input : torch.Tensor  
+            Previous cell state for first LSTM memory layer
+        list2_h_input : torch.Tensor
+            Previous hidden state for second LSTM memory layer
+        list2_c_input : torch.Tensor
+            Previous cell state for second LSTM memory layer
+        lstm_buffer_input : torch.Tensor
+            LSTM buffer input for maintaining streaming context
+
+        Returns
+        -------
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
+            A tuple containing:
+            - quantized_audio_slice: Generated audio slice of shape [B, 1, T_slice]
+            - list1_h: Updated hidden state for first LSTM memory layer
+            - list1_c: Updated cell state for first LSTM memory layer
+            - list2_h: Updated hidden state for second LSTM memory layer
+            - list2_c: Updated cell state for second LSTM memory layer
+            - lstm_buffer: Updated LSTM buffer for next iteration
+        """
+        # Dequantize semantic tokens to get continuous latent features.
+        semantic_latents = self.semantic_dequantizer(semantic_codes)
+        
+        if self.acoustic_codebook_size != 0 and acoustic_codes is not None:
+            # Dequantize acoustic tokens using the internal RVQ's codebooks.
+            assert 0 < acoustic_codes.shape[1] <= self.n_codebooks, \
+                   f"The acoustic codes is encoded in {acoustic_codes.shape[1]} acoustic codebook, but the decoder only supply at most {self.n_codebooks} acoustic codebook"
+            acoustic_latents, _, _ = self.acoustic_quantizer.from_codes(acoustic_codes)
+            
+            # Align features by truncating to the minimum length before concatenation.
+            min_len = min(semantic_latents.shape[1], acoustic_latents.shape[-1])
+            latents = torch.cat((semantic_latents.transpose(-1, -2)[..., :min_len], acoustic_latents[..., :min_len]), dim=1)
+        else:
+            # If no acoustic path, use only semantic latents.
+            latents = semantic_latents.transpose(-1, -2)
+            
+        # Generate waveform from the combined latent representation in streaming mode
+        quantized_audio_slice, list1_h, list1_c, list2_h, list2_c, lstm_buffer = self.decoder.forward_stream(
+            latents, list1_h_input, list1_c_input, list2_h_input, list2_c_input, lstm_buffer_input
+        )
+        
+        return quantized_audio_slice, list1_h, list1_c, list2_h, list2_c, lstm_buffer
